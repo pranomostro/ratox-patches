@@ -1,0 +1,190 @@
+From a1d8c1d0c70af3046e7859e82749e39ca9a6ab95 Mon Sep 17 00:00:00 2001
+From: FRIGN <dev@frign.de>
+Date: Thu, 25 Dec 2014 21:16:48 +0100
+Subject: [PATCH] Add OSX replacements for certain functions.
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Implement mkdirat, mkfifoat, openat, unlinkat and clock_gettime for OSX.
+
+Initial work done by Håvard Pettersson <mail@haavard.me>.
+Ported to new codebase by FRIGN.
+---
+ Makefile |   5 +++
+ osx.c    | 115 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ osx.h    |   9 +++++
+ ratox.c  |   3 ++
+ 4 files changed, 132 insertions(+)
+ create mode 100644 osx.c
+ create mode 100644 osx.h
+
+diff --git a/Makefile b/Makefile
+index a8b1656..189d403 100644
+--- a/Makefile
++++ b/Makefile
+@@ -7,6 +7,11 @@ HDR = arg.h config.h readpassphrase.h util.h
+ LIB = \
+ 	eprintf.o \
+ 	readpassphrase.o
++
++ifeq ($(shell uname -s),Darwin)
++       LIB += osx.o
++endif
++
+ SRC = \
+ 	ratox.c
+ 
+diff --git a/osx.c b/osx.c
+new file mode 100644
+index 0000000..e29bdc6
+--- /dev/null
++++ b/osx.c
+@@ -0,0 +1,115 @@
++/* See LICENSE file for copyright and license details. */
++#include <fcntl.h>
++#include <mach/mach_time.h>
++#include <stdarg.h>
++#include <stdlib.h>
++#include <sys/stat.h>
++#include <unistd.h>
++
++#include "osx.h"
++
++int
++openat(int dirfd, const char *pathname, int flags, ...)
++{
++	va_list ap;
++	int fd, mode;
++	char *cwd;
++
++	va_start(ap, flags);
++	cwd = getcwd(NULL, 0);
++
++	if (fchdir(dirfd) < 0)
++		return -1;
++
++	if (flags & O_CREAT) {
++		mode = va_arg(ap, int);
++		fd = open(pathname, flags, mode);
++	} else {
++		fd = open(pathname, flags);
++	}
++
++	if (chdir(cwd) < 0)
++		return -1;
++
++	free(cwd);
++	return fd;
++}
++
++int
++mkdirat(int dirfd, const char *pathname, mode_t mode)
++{
++	int rc;
++	char *cwd = getcwd(NULL, 0);
++
++	if (fchdir(dirfd) < 0)
++		return -1;
++
++	rc = mkdir(pathname, mode);
++
++	if (chdir(cwd) < 0)
++		return -1;
++
++	free(cwd);
++	return rc;
++}
++
++int
++mkfifoat(int dirfd, const char *pathname, mode_t mode)
++{
++	int rc;
++	char *cwd = getcwd(NULL, 0);
++
++	if (fchdir(dirfd) < 0)
++		return -1;
++
++	rc = mkfifo(pathname, mode);
++
++	if (chdir(cwd) < 0)
++		return -1;
++
++	free(cwd);
++	return rc;
++}
++
++int
++unlinkat(int dirfd, const char *pathname, int flags)
++{
++	int rc;
++	char *cwd = getcwd(NULL, 0);
++
++	if (fchdir(dirfd) < 0)
++		return -1;
++
++	if (flags & AT_REMOVEDIR)
++		rc = rmdir(pathname);
++	else
++		rc = unlink(pathname);
++
++	if (chdir(cwd) < 0)
++		return -1;
++
++	free(cwd);
++	return rc;
++}
++
++int
++clock_gettime(int clk_id, struct timespec *ts)
++{
++	static mach_timebase_info_data_t timebase_info;
++	uint64_t mach_time, mach_time_nano;
++
++	if (clk_id != CLOCK_MONOTONIC)
++		return -1;
++
++	// initialize timebase_info if necessary
++	if (timebase_info.denom == 0)
++		mach_timebase_info(&timebase_info);
++
++	mach_time = mach_absolute_time();
++	mach_time_nano = mach_time * timebase_info.numer / timebase_info.denom;
++
++	ts->tv_sec = mach_time_nano / 1E9;
++	ts->tv_nsec = mach_time_nano;
++
++	return 0;
++}
+diff --git a/osx.h b/osx.h
+new file mode 100644
+index 0000000..4a9935f
+--- /dev/null
++++ b/osx.h
+@@ -0,0 +1,9 @@
++/* See LICENSE file for copyright and license details. */
++#define AT_REMOVEDIR    0x200
++#define CLOCK_MONOTONIC 1
++
++int openat(int, const char *, int, ...);
++int mkdirat(int, const char *, mode_t);
++int mkfifoat(int, const char *, mode_t);
++int unlinkat(int, const char *, int);
++int clock_gettime(int, struct timespec *);
+diff --git a/ratox.c b/ratox.c
+index cae3405..86d9908 100644
+--- a/ratox.c
++++ b/ratox.c
+@@ -22,6 +22,9 @@
+ #include <tox/toxencryptsave.h>
+ 
+ #include "arg.h"
++#ifdef __APPLE__
++#include "osx.h"
++#endif
+ #include "queue.h"
+ #include "readpassphrase.h"
+ #include "util.h"
+-- 
+1.8.5.5
+
