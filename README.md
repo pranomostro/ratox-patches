@@ -6,7 +6,7 @@ This repo contains several patches for [ratox](https://ratox.2f30.org/).
 Patches
 =====
 
-* os_x.patch: A patch to make ratox run on OSX (missing POSIX functions).
+* os_x.patch: A patch to make ratox run on OSX (adds missing POSIX functions).
 
 License
 =======
