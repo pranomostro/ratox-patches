@@ -1,35 +1,13 @@
-From a1d8c1d0c70af3046e7859e82749e39ca9a6ab95 Mon Sep 17 00:00:00 2001
-From: FRIGN <dev@frign.de>
-Date: Thu, 25 Dec 2014 21:16:48 +0100
-Subject: [PATCH] Add OSX replacements for certain functions.
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
-
-Implement mkdirat, mkfifoat, openat, unlinkat and clock_gettime for OSX.
-
-Initial work done by Håvard Pettersson <mail@haavard.me>.
-Ported to new codebase by FRIGN.
----
- Makefile |   5 +++
- osx.c    | 115 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- osx.h    |   9 +++++
- ratox.c  |   3 ++
- 4 files changed, 132 insertions(+)
- create mode 100644 osx.c
- create mode 100644 osx.h
-
 diff --git a/Makefile b/Makefile
-index a8b1656..189d403 100644
+index e279213..4bb7ab5 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -7,6 +7,11 @@ HDR = arg.h config.h readpassphrase.h util.h
- LIB = \
+@@ -14,6 +14,10 @@ LIB = \
  	eprintf.o \
  	readpassphrase.o
-+
-+ifeq ($(shell uname -s),Darwin)
-+       LIB += osx.o
+ 
++ifeq ($(shell uname -s), Darwin)
++	LIB += osx.o
 +endif
 +
  SRC = \
@@ -172,7 +150,7 @@ index 0000000..4a9935f
 +int unlinkat(int, const char *, int);
 +int clock_gettime(int, struct timespec *);
 diff --git a/ratox.c b/ratox.c
-index cae3405..86d9908 100644
+index cf4d38c..fd053c5 100644
 --- a/ratox.c
 +++ b/ratox.c
 @@ -22,6 +22,9 @@
@@ -185,6 +163,3 @@ index cae3405..86d9908 100644
  #include "queue.h"
  #include "readpassphrase.h"
  #include "util.h"
--- 
-1.8.5.5
-
