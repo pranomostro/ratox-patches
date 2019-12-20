@@ -1,7 +1,7 @@
 Ratox patches
 =============
 
-This repo contains several patches for [ratox](https://ratox.2f30.org/).
+This repo contains several patches for ratox[0].
 
 Patches
 =====
@@ -12,4 +12,6 @@ Patches
 License
 =======
 
-MIT license, more details in [LICENSE](./LICENSE).
+MIT license, more details in ./LICENSE.
+
+[0] https://ratox.2f30.org/
